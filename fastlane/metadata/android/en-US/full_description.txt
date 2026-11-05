@@ -1,0 +1,11 @@
+This app focuses purely on providing fast and easy access to element's data.
+
+Key Feature:
+
+- Cleany Layout: A beautiful, color-coded periodic table optimized for effortless browsing.
+
+- Esential Properties: Tap any element to view its name, symbol, atomic number, atomic weight, group, period of discovery, and category..
+
+- Offline Support: Works fully offline so you can access element information anywhere, anytime, without an internet connection..
+
+Whether you are a student looking for a quick homework references or a science lover who wants the elements in your pocket, this app keeps chemistry simple. Download it today for a streamlined periodic table experience!
