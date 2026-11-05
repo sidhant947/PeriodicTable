@@ -60,7 +60,6 @@ android {
                 signingConfig = releaseConfig
             } else {
                 logger.warn("Release faiiled , debug build.")
-                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }
