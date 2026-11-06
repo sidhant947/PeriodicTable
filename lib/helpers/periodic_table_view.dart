@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/elements.dart';
-import '../helpers/element_utils.dart';
-import 'element_detail_screen.dart';
+import 'element_utils.dart';
+import '../screens/element_detail_screen.dart';
 
-class PeriodicTableScreen extends StatelessWidget {
-  const PeriodicTableScreen({super.key});
+class PeriodicTableView extends StatelessWidget {
+  const PeriodicTableView({super.key});
 
   static (int, int) _getCoords(int z) => switch (z) {
     1 => (0, 0),
@@ -32,54 +32,46 @@ class PeriodicTableScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Periodic Table'),
-        centerTitle: true,
-        scrolledUnderElevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: InteractiveViewer(
-        constrained: false,
-        boundaryMargin: const EdgeInsets.all(32),
-        minScale: 0.3,
-        maxScale: 2.5,
-        child: RepaintBoundary(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: List.generate(10, (row) {
-                if (row == 7) {
-                  return const SizedBox(height: 16);
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: List.generate(18, (col) {
-                      final el = _elementGrid[(row, col)];
-                      final Widget cell = switch ((row, col)) {
-                        _ when el != null => _TableElementCell(element: el),
-                        (5, 2) => const _TablePlaceholderCell(
-                          range: '57-71',
-                          label: 'La-Lu',
-                        ),
-                        (6, 2) => const _TablePlaceholderCell(
-                          range: '89-103',
-                          label: 'Ac-Lr',
-                        ),
-                        _ => const SizedBox(width: 58, height: 58),
-                      };
+    return InteractiveViewer(
+      constrained: false,
+      boundaryMargin: const EdgeInsets.all(32),
+      minScale: 0.3,
+      maxScale: 2.5,
+      child: RepaintBoundary(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(10, (row) {
+              if (row == 7) {
+                return const SizedBox(height: 16);
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: List.generate(18, (col) {
+                    final el = _elementGrid[(row, col)];
+                    final Widget cell = switch ((row, col)) {
+                      _ when el != null => _TableElementCell(element: el),
+                      (5, 2) => const _TablePlaceholderCell(
+                        range: '57-71',
+                        label: 'La-Lu',
+                      ),
+                      (6, 2) => const _TablePlaceholderCell(
+                        range: '89-103',
+                        label: 'Ac-Lr',
+                      ),
+                      _ => const SizedBox(width: 58, height: 58),
+                    };
 
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: cell,
-                      );
-                    }),
-                  ),
-                );
-              }),
-            ),
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: cell,
+                    );
+                  }),
+                ),
+              );
+            }),
           ),
         ),
       ),

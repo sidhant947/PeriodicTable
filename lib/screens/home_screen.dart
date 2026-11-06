@@ -3,9 +3,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/elements.dart';
 import '../main.dart';
+import '../helpers/element_store.dart';
 import '../helpers/element_utils.dart';
 import 'element_detail_screen.dart';
-import 'periodic_table_screen.dart';
+import '../helpers/periodic_table_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
+  bool? _isTableView;
 
   @override
   void dispose() {
@@ -48,11 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final store = ElementStoreScope.of(context);
     final theme = Theme.of(context);
+    final isTableView =
+        _isTableView ?? (store.defaultView == DefaultView.table);
 
     final q = _query.trim().toLowerCase();
     final List<ElementData> filtered = q.isEmpty
         ? elementsData
         : elementsData.where((e) => _matches(e, q)).toList();
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -87,6 +92,42 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                'Default View',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            RadioGroup<DefaultView>(
+              groupValue: store.defaultView,
+              onChanged: (val) {
+                if (val != null) {
+                  store.setDefaultView(val);
+                  setState(() => _isTableView = val == DefaultView.table);
+                }
+              },
+              child: const Column(
+                children: [
+                  RadioListTile<DefaultView>(
+                    value: DefaultView.list,
+                    title: Text('List View'),
+                    secondary: Icon(Icons.view_list),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  RadioListTile<DefaultView>(
+                    value: DefaultView.table,
+                    title: Text('Table View'),
+                    secondary: Icon(Icons.grid_on),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 16),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
               child: Text(
@@ -145,145 +186,145 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PeriodicTableScreen()),
-          );
-        },
-        icon: const Icon(Icons.grid_on),
-        label: const Text('Table View'),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) => setState(() => _query = val),
-              decoration: InputDecoration(
-                hintText: 'Search any element...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _query.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _query = '');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      floatingActionButton: keyboardVisible
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => setState(() => _isTableView = !isTableView),
+              icon: Icon(isTableView ? Icons.view_list : Icons.grid_on),
+              label: Text(isTableView ? 'List View' : 'Table View'),
+            ),
+      body: isTableView
+          ? const PeriodicTableView()
+          : filtered.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.search_off,
+                      size: 48,
+                      color: theme.colorScheme.outline,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No elements matched the "$_query"',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+              ),
+            )
+          : ListView.builder(
+              itemExtent: 72,
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final el = filtered[index];
+                final colors = getCategoryColors(el.category, theme.brightness);
+
+                return ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ElementDetailScreen(element: el),
+                      ),
+                    );
+                  },
+                  leading: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: colors.border),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${el.number}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: colors.primary,
+                          ),
+                        ),
+                        Text(
+                          el.symbol,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: colors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  title: Text(
+                    el.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    '${el.classification} • ${el.phase}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: Text(
+                    el.atomicMass,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                );
+              },
+            ),
+      bottomNavigationBar: isTableView
+          ? null
+          : SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                  8 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _query = val),
+                  decoration: InputDecoration(
+                    hintText: 'Search any element...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _query.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerHighest,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 48,
-                            color: theme.colorScheme.outline,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No elements matched the "$_query"',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    itemExtent: 72,
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final el = filtered[index];
-                      final colors = getCategoryColors(
-                        el.category,
-                        theme.brightness,
-                      );
-
-                      return ListTile(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ElementDetailScreen(element: el),
-                            ),
-                          );
-                        },
-                        leading: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: colors.border),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                '${el.number}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.primary,
-                                ),
-                              ),
-                              Text(
-                                el.symbol,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        title: Text(
-                          el.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          '${el.classification} • ${el.phase}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        trailing: Text(
-                          el.atomicMass,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
     );
   }
 }
