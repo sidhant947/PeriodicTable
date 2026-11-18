@@ -1,13 +1,90 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../data/elements.dart';
 import '../helpers/element_utils.dart';
 
-class ElementDetailScreen extends StatelessWidget {
+class ElementDetailScreen extends StatefulWidget {
   final ElementData element;
 
   const ElementDetailScreen({super.key, required this.element});
+
+  @override
+  State<ElementDetailScreen> createState() => _ElementDetailScreenState();
+}
+
+class _ElementDetailScreenState extends State<ElementDetailScreen> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialIndex = elementsData.indexWhere(
+      (e) => e.number == widget.element.number,
+    );
+    _currentIndex = initialIndex >= 0 ? initialIndex : 0;
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goTo(int index) {
+    if (index >= 0 && index < elementsData.length) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentElement = elementsData[_currentIndex];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(currentElement.name),
+        centerTitle: true,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            tooltip: 'Previous element',
+            onPressed:
+                _currentIndex > 0 ? () => _goTo(_currentIndex - 1) : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            tooltip: 'Next element',
+            onPressed:
+                _currentIndex < elementsData.length - 1
+                    ? () => _goTo(_currentIndex + 1)
+                    : null,
+          ),
+        ],
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: elementsData.length,
+        onPageChanged: (index) => setState(() => _currentIndex = index),
+        itemBuilder: (context, index) =>
+            _ElementDetailContent(element: elementsData[index]),
+      ),
+    );
+  }
+}
+
+class _ElementDetailContent extends StatelessWidget {
+  final ElementData element;
+
+  const _ElementDetailContent({required this.element});
 
   Future<void> _openWiki() async {
     final uri = Uri.tryParse(element.wikilink);
@@ -39,16 +116,9 @@ class ElementDetailScreen extends StatelessWidget {
       ('Orbital Block', element.block),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(element.name),
-        centerTitle: true,
-        scrolledUnderElevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -291,6 +361,27 @@ class ElementDetailScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (element.isotopes.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _SectionHeader(icon: Icons.grain_outlined, title: 'Isotopes'),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 0,
+              color: theme.colorScheme.surfaceContainerHighest,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  children: [
+                    for (final isotope in element.isotopes)
+                      _IsotopeRow(isotope: isotope, catColor: catColor),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (element.wikilink.isNotEmpty) ...[
             const SizedBox(height: 20),
             SizedBox(
@@ -310,8 +401,7 @@ class ElementDetailScreen extends StatelessWidget {
           ],
           const SizedBox(height: 16),
         ],
-      ),
-    );
+      );
   }
 }
 
@@ -431,6 +521,73 @@ class _PropertyRow extends StatelessWidget {
               value,
               textAlign: TextAlign.end,
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IsotopeRow extends StatelessWidget {
+  final IsotopeData isotope;
+  final Color catColor;
+
+  const _IsotopeRow({required this.isotope, required this.catColor});
+
+  String _formatAbundance(double? abundance) {
+    if (abundance == null) return 'Synthetic / Trace';
+    final pct = abundance * 100;
+    if (pct == 100.0) return '100%';
+    final str = pct.toStringAsFixed(6);
+    final trimmed = str
+        .replaceAll(RegExp(r'0*$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
+    return '$trimmed%';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: catColor),
+            ),
+            child: Text(
+              '${isotope.symbol}-${isotope.massNumber}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: catColor,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${isotope.mass} u',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'Abundance: ${_formatAbundance(isotope.abundance)}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

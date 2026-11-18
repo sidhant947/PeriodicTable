@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../data/elements.dart';
 import 'element_utils.dart';
@@ -26,12 +26,21 @@ class PeriodicTableView extends StatelessWidget {
     _ => (6, z - 101),
   };
 
+  static String _periodLabel(int row) => switch (row) {
+    >= 0 && <= 6 => '${row + 1}',
+    8 => '6*',
+    9 => '7*',
+    _ => '',
+  };
+
   static final Map<(int, int), ElementData> _elementGrid = {
     for (final el in elementsData) _getCoords(el.number): el,
   };
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return InteractiveViewer(
       constrained: false,
       boundaryMargin: const EdgeInsets.all(32),
@@ -42,36 +51,92 @@ class PeriodicTableView extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: List.generate(10, (row) {
-              if (row == 7) {
-                return const SizedBox(height: 16);
-              }
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
-                  children: List.generate(18, (col) {
-                    final el = _elementGrid[(row, col)];
-                    final Widget cell = switch ((row, col)) {
-                      _ when el != null => _TableElementCell(element: el),
-                      (5, 2) => const _TablePlaceholderCell(
-                        range: '57-71',
-                        label: 'La-Lu',
-                      ),
-                      (6, 2) => const _TablePlaceholderCell(
-                        range: '89-103',
-                        label: 'Ac-Lr',
-                      ),
-                      _ => const SizedBox(width: 58, height: 58),
-                    };
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: cell,
-                    );
-                  }),
+                  children: [
+                    const SizedBox(width: 28),
+                    ...List.generate(18, (col) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: SizedBox(
+                          width: 58,
+                          height: 20,
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${col + 1}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
-              );
-            }),
+              ),
+              ...List.generate(10, (row) {
+                if (row == 7) {
+                  return const SizedBox(height: 16);
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: SizedBox(
+                          width: 24,
+                          height: 58,
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                _periodLabel(row),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      ...List.generate(18, (col) {
+                        final el = _elementGrid[(row, col)];
+                        final Widget cell = switch ((row, col)) {
+                          _ when el != null => _TableElementCell(element: el),
+                          (5, 2) => const _TablePlaceholderCell(
+                            range: '57-71',
+                            label: 'La-Lu',
+                            category: 'Lanthanide',
+                          ),
+                          (6, 2) => const _TablePlaceholderCell(
+                            range: '89-103',
+                            label: 'Ac-Lr',
+                            category: 'Actinide',
+                          ),
+                          _ => const SizedBox(width: 58, height: 58),
+                        };
+
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: cell,
+                        );
+                      }),
+                    ],
+                  ),
+                );
+              }),
+            ],
           ),
         ),
       ),
@@ -89,55 +154,69 @@ class _TableElementCell extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = getCategoryColors(element.category, theme.brightness);
 
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ElementDetailScreen(element: element),
+    return Material(
+      color: colors.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        // side: BorderSide(color: colors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ElementDetailScreen(element: element),
+            ),
+          );
+        },
+        child: SizedBox(
+          width: 58,
+          height: 58,
+          child: Padding(
+            padding: const EdgeInsets.all(3),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 52,
+                    child: Text(
+                      '${element.number}',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: colors.primary,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    element.symbol,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: colors.primary,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 52,
+                    child: Text(
+                      element.name,
+                      maxLines: 1,
+                      // overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        );
-      },
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        width: 58,
-        height: 58,
-        decoration: BoxDecoration(
-          color: colors.background,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: colors.border),
-        ),
-        padding: const EdgeInsets.all(2),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '${element.number}',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: colors.primary,
-              ),
-            ),
-            Text(
-              element.symbol,
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                color: colors.primary,
-              ),
-            ),
-            FittedBox(
-              child: Text(
-                element.name,
-                style: TextStyle(
-                  fontSize: 8,
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -147,41 +226,53 @@ class _TableElementCell extends StatelessWidget {
 class _TablePlaceholderCell extends StatelessWidget {
   final String range;
   final String label;
+  final String category;
 
-  const _TablePlaceholderCell({required this.range, required this.label});
+  const _TablePlaceholderCell({
+    required this.range,
+    required this.label,
+    required this.category,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = getCategoryColors(category, theme.brightness);
+
     return Container(
       width: 58,
       height: 58,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
+        color: colors.background,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        border: Border.all(color: colors.border),
       ),
       padding: const EdgeInsets.all(2),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            range,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurfaceVariant,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              range,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: colors.primary,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
